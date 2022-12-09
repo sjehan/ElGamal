@@ -49,7 +49,7 @@ https://publications.cispa.saarland/3823/1/platypus_ccs_final.pdf
 ## Description of the different files:
 - dbdecrypt: contains the functions used specifically by the dataseller to encrypt tables in databases and to generate all the necessary keys.
 - dbencrypt: contains the functions used specifically by the databuyer to decrypt the desired data.
-- keyHolder: contains the functions used by the three key holders (Ledgys, the app owner and the data seller).
+- keyHolder: contains the functions used by the three key holders.
 - decrypt: contains all the functions dedicated to the decryption of data, it is a kind of annex to the databuyer file which contains functions that are not accessible from the outside.
 - encrypt: contains the functions dedicated to the encryption of data, which is in practice an annex to the dataseller file.
 - utils: contains all the types of the package, constants and global variables as well as utility functions.
