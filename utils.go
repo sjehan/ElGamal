@@ -16,46 +16,44 @@ import (
 
 /*
  *
- * Définitions des types utilisés
+ * Definition of the types used
  *
  */
 
-// CPoint, pour Curve Point, représente un point sur une courbe elliptique en coordonnées (x,y)
+// CPoint, for Curve Point, represents a point on an elliptic curve in (x,y) coordinates
 type CPoint struct {
 	x, y *big.Int
 }
 
-// shortPoint est le type de la représentation des points de la courbe sous forme réduite
+// shortPoint is the type of the representation of the curve points in short form
 type ShortPoint [SHORT_POINT_LENGTH]byte
 
-// Cypher est le type de cypher utilisé pour le cryptage sur courbe elliptique.
-// Il correspond à une implémentation classique de ElGamal mais n'est utilisé ici qu'à
-// des fins de test et pas pour le cryptage de tables.
+// Cypher is the type of cypher used for encryption on elliptic curves.
+// It corresponds to a classical implementation of ElGamal but is only used here for
+// testing purposes and not for encrypting tables.
 type Cypher struct {
 	C    CPoint
 	Data []byte
 }
 
-// CypherPoint est le type de cypher dans le cas où le message est encodée sous forme
-// de point de la courbe.
+// CypherPoint is the type of cypher in the case where the message is encoded as a point on the curve.
 type CypherPoint struct {
 	C    CPoint
 	Data ShortPoint
 }
 
-// PublicKey est le type des clés publiques utilisées pour le cryptage sur les courbes elliptiques
+// PublicKey is the type of public keys used for encryption on elliptic curves
 type PublicKey struct {
 	elliptic.Curve
 	Y CPoint
 }
 
-// PrivateKey peut être vu comme un polynôme du premier degré dont on connait
-// quatre valeurs. La première, en zéro, est celle qui est utilisée pour le
-// cryptage, et les trois autres en 1, 2 et 3 permettent de retrouver la première
-// en interpolant deux d'entre elles.
+// PrivateKey can be seen as a first degree polynomial whose four values are known.
+// The first one, at zero, is the one used for encryption, and the three others
+// at 1, 2 and 3 allow to retrieve the first one by interpolating two of them.
 type PrivateKey [4][]byte
 
-// TableInfo permet de garder toutes les informations utiles sur une table SQL donnée
+// TableInfo allows to keep all the useful information on a given SQL table
 type TableInfo struct {
 	name     string
 	nRows    uint64
@@ -65,19 +63,19 @@ type TableInfo struct {
 	commands []byte
 }
 
-// ArrayKeys contient toutes les clés permettant le déchiffrage d'une table.
-// L'ensemble des clés privée est retenu sous forme de map puisqu'il n'existe pas
-// forcément une clé privée par colonne, on ne les encrypte pas toutes.
+// ArrayKeys contains all the keys allowing the decryption of a table.
+// The set of private keys is kept in a map since there is not necessarily a private key
+// for each column, we do not encrypt all of them.
 type TableKeys struct {
 	ti   TableInfo
 	R    map[interface{}]*big.Int
 	Priv map[string]PrivateKey
 }
 
-// PartArrayKey décrit le tableau des clés détenu par un des key holder relativement
-// à une base de donnée, i.e. avec seulement une part des clés privées, donnée
-// par Shamir's Secret Sharing. Concrètement au type clé privé on retient ici les éléments
-// s_i donnés par SSS sous forme de big.Int. Cela facilite ensuite l'exécution de calculs.
+// PartArrayKey describes the array of keys held by one of the key holders with respect
+// to a database, i.e. with only a part of the private keys, given
+// by Shamir's Secret Sharing. In practice, we keep here the elements
+// s_i given by SSS in the form of big.Int. This facilitates the execution of calculations.
 type PartTableKey struct {
 	ti        TableInfo
 	keyHolder byte
@@ -85,11 +83,10 @@ type PartTableKey struct {
 	PrivPart  map[string]*big.Int // les s_j,k
 }
 
-// coord est un type qui correspond à des coordonnées dans un tableau SQL sous leur forme la plus
-// pratique. i correspond à la clé primaire, qui va identifier la ligne, et j est le nom de la
-// colonne, qui peut être plus pratique à manipuler que son numéro dans le cas de requêtes.
-// Ce type n'est pas très utilisé actuellement dans mon code et je ne sais pas si il restera
-// pertinent.
+// coord is a type that corresponds to coordinates in a SQL table in their most convenient form.
+// i corresponds to the primary key, which will identify the line, and j is the name of the column,
+// which can be more convenient to manipulate than its number in the case of queries.
+// This type is not very used in my code and I do not know if it will remain relevant.
 type coord struct {
 	i interface{}
 	j string
@@ -97,36 +94,35 @@ type coord struct {
 
 /*********************************************************************************************
  *
- * Définitions des variables et constantes (globales au package)
+ * Definition of the variables and constants (global to the package)
  *
  *********************************************************************************************/
 
 const (
-	DATASELLER = 1
-	APPOWNER   = 2
-	LEDGYS     = 3
+	DATAPROVIDER = 1
+	APPOWNER     = 2
+	ADMIN        = 3
 )
 
-// Cette valeur décrit la longueur en octets de la représentation d'un point de la courbe sous forme réduite
-// Elle doit être changée si la courbe est modifiée.
+// This value describes the length in bytes of the representation of a point of the curve in short form
+// It must be changed if the curve is modified.
 const SHORT_POINT_LENGTH = 29
 
-// Indique que la colonne qui va servir de clé primaire est la première
+// Indicates that the column that will serve as primary key is the first
 const PRIM_COL_NUMBER = 0
 
-// Nombre maximum de routines que l'on lance sur les algorithmes ou le niveau de parallélisation est variable
+// Maximum number of routines that we launch on the algorithms or the level of parallelization is variable
 const MAX_ROUTINES = 4
 
-// Nombre de bits de chaque message encodé séparément (imposé par l'algorithme de hachage)
+// Number of bits of each encoded message (imposed by the hash algorithm)
 const BytesNumber = sha512.Size // = 64
 
-// Tout ce qui a trait à la courbe utilisé
+// Elliptic curve used
 var myCurve = elliptic.P224()
 var P = myCurve.Params().P
 var N = myCurve.Params().N
 var G = CPoint{myCurve.Params().Gx, myCurve.Params().Gy}
 var pointZero = G.subC(G)
-
 var Big0 = big.NewInt(0)
 var Big1 = big.NewInt(1)
 var Big2 = big.NewInt(2)
@@ -134,20 +130,20 @@ var Big3 = big.NewInt(3)
 
 /*********************************************************************************************
  *
- * Fonctions de  vérification
+ * Functions for checking
  *
  *********************************************************************************************/
 
-// checkErr est une fonction de gestion des erreurs,
-// elle panique si une erreur est detectée
+// checkErr is a function for error management,
+// it panics if an error is detected
 func checkErr(err error) {
 	if err != nil {
 		panic(err)
 	}
 }
 
-// checkPoint vérifie la validité d'un point du type CPoint
-// et panique si celui-ci n'est pas sur la courbe
+// checkPoint checks the validity of a point of type CPoint
+// and panics if it is not on the curve
 func checkPoint(p CPoint) {
 	if !(myCurve.Params()).IsOnCurve(p.x, p.y) {
 		panic(errors.New("A point is not on the curve."))
@@ -156,7 +152,7 @@ func checkPoint(p CPoint) {
 
 /*********************************************************************************************
  *
- * Opérateurs sur les points d'une courbe
+ * Operators on points of a curve
  *
  *********************************************************************************************/
 
@@ -164,65 +160,65 @@ func (pt CPoint) String() string {
 	return fmt.Sprintf("(%x, %x)", pt.x, pt.y)
 }
 
-// baseMult est un intermédiaire pour simplifier l'écriture et éviter
-// de passer par ScalarBaseMult de elliptic, avec un scalaire en entrée
-// sous forme de *big.Int
+// baseMult is an intermediate to simplify the writing and avoid
+// passing through ScalarBaseMult of elliptic, with a scalar in input
+// in the form of * big.Int
 func baseMult(a *big.Int) (r CPoint) {
 	r.x, r.y = (myCurve.Params()).ScalarBaseMult(a.Bytes())
 	return
 }
 
-// baseMult est un intermédiaire pour simplifier l'écriture et éviter
-// de passer par ScalarBaseMult de elliptic, avec un scalaire en entrée
-// sous forme de []byte
+// baseMult is an intermediate to simplify the writing and avoid
+// passing through ScalarBaseMult of elliptic, with a scalar in input
+// in the form of [] byte
 func baseMultB(a []byte) (r CPoint) {
 	r.x, r.y = (myCurve.Params()).ScalarBaseMult(a)
 	return
 }
 
-// mult est un intermédiaire pour simplifier l'écriture et éviter
-// de passer par ScalarBaseMult de elliptic, avec un scalaire en entrée
-// sous forme de *big.Int
+// mult is an intermediate to simplify the writing and avoid
+// passing through ScalarBaseMult of elliptic, with a scalar in input
+// in the form of * big.Int
 func (p CPoint) mult(a *big.Int) (r CPoint) {
 	r.x, r.y = (myCurve.Params()).ScalarMult(p.x, p.y, a.Bytes())
 	return
 }
 
-// mult est un intermédiaire pour simplifier l'écriture et éviter
-// de passer par ScalarBaseMult de elliptic, avec un scalaire en entrée
-// sous forme de []byte
+// mult is an intermediate to simplify the writing and avoid
+// passing through ScalarBaseMult of elliptic, with a scalar in input
+// in the form of [] byte
 func (p CPoint) multB(a []byte) (r CPoint) {
 	r.x, r.y = (myCurve.Params()).ScalarMult(p.x, p.y, a)
 	return
 }
 
-// addC est un intermédiaire pour simplifier l'écriture et éviter
-// de passer par Add de elliptic
+// addC is an intermediate to simplify the writing and avoid
+// passing through Add of elliptic
 func addC(p, q CPoint) (r CPoint) {
 	r.x, r.y = (myCurve.Params()).Add(p.x, p.y, q.x, q.y)
 	return
 }
 
-// negC donne l'opposé d'un point sur une courbe elliptique
+// negC gives the opposite of a point on an elliptic curve
 func (p CPoint) negC() (r CPoint) {
 	r.x, r.y = p.x, new(big.Int).Neg(p.y)
 	return
 }
 
-// sub est un intermédiaire pour simplifier l'écriture et éviter
-// de passer par Add de elliptic
+// sub is an intermediate to simplify the writing and avoid
+// passing through Add of elliptic
 func (p CPoint) subC(q CPoint) CPoint {
 	return addC(p, q.negC())
 }
 
-// equal est une méthode sur les points d'une courbe elliptique pour
-// vérifier leur égalité
+// equal is a method on points of an elliptic curve to
+// check their equality
 func (this CPoint) equalC(p CPoint) bool {
 	return (this.x.Cmp(p.x) == 0) && (this.y.Cmp(p.y) == 0)
 }
 
-// double est un intermédiaire pour simplifier l'écriture et éviter
-// de passer par Double de elliptic
+// double is an intermediate to simplify the writing and avoid
+// passing through Double of elliptic
 func (p CPoint) doubleC() (r CPoint) {
 	r.x, r.y = (myCurve.Params()).Double(p.x, p.y)
 	return
@@ -230,23 +226,22 @@ func (p CPoint) doubleC() (r CPoint) {
 
 /***********************************************************************************************
  *
- * Fonctions pour une représentation minimisée des points sur la courbe,
- * l'abscisse x et le signe de y suffisant à connaître le point.
+ * Functions for the representation of points on the curve
+ * the abscissa x and the sign of y are sufficient to know the point.
  *
- * La forme adpoptée est la concaténation suivante :
+ * The adopted form is the following concatenation:
  *  	short(p) = [f(y), x]
- * où f est une fonction de Z/pZ vers {0,1} telle que
- *		| 0 si y < p/2
+ * where f is a function of Z/pZ to {0,1} such that
+ *		| 0 if y < p/2
  * f(y) = |
- *		| 1 si y >= p/2
- * En effet, pour un x donné on trouve au plus deux points dont les ordonnées sont
- * y et (p - y), car ils ont le même carré modulo p.
- * L'octet contenant f(y) sert donc à choisir le bon y au moment où l'on revient
- * ensuite en représentation classique.
+ *		| 1 if y >= p/2
+ * Indeed, for a given x we find at most two points whose ordinates are
+ * y and (p - y), because they have the same square modulo p.
+ *
  *
  ***********************************************************************************************/
 
-// GetShortOf donne la représentation minimisée d'un point d'une courbe elliptique
+// GetShortOf returns the minimal representation of a point of an elliptic curve
 func GetShortOf(p CPoint) (sp ShortPoint) {
 	var middle = new(big.Int).Div(P, Big2)
 	if p.y.Cmp(middle) >= 0 {
@@ -262,10 +257,10 @@ func GetShortOf(p CPoint) (sp ShortPoint) {
 	return
 }
 
-// YFromX donne l'ordonnée positive du point de la courbe correspondant à l'abscisse x
-// Il renvoie une erreur si ce point n'existe pas.
-// On rappelle que la formule de la courbe est y^2 = x^3 - 3*x + b
-// où b est spécifique à la courbe utilisée.
+// YFromX gives the positive ordinate of the point of the curve corresponding to the abscissa x
+// It returns an error if this point does not exist.
+// We recall that the curve formula is y^2 = x^3 - 3*x + b
+// where b is specific to the curve used.
 func YFromX(x *big.Int) (y *big.Int, err error) {
 	x3 := new(big.Int).Exp(x, Big3, P)
 	threeX := new(big.Int).Mul(x, Big3)
@@ -281,8 +276,8 @@ func YFromX(x *big.Int) (y *big.Int, err error) {
 	return
 }
 
-// PointFromShort retourne la représentation en coordonnées de types (x,y) d'un point
-// à partir de sa représentation réduite.
+// PonitFromShort returns the representation in coordinates of types (x,y) of a point
+// from its reduced representation.
 func PointFromShort(sp ShortPoint) (p CPoint) {
 	var err error
 	p.x = new(big.Int).SetBytes(sp[1:SHORT_POINT_LENGTH])
@@ -297,7 +292,7 @@ func PointFromShort(sp ShortPoint) (p CPoint) {
 	return
 }
 
-// PointFromBytes est l'équivalent de PointFromShort mais en prenant des bytes en entrée
+// PointFromBytes is the equivalent of PointFromShort but taking bytes as input
 func PointFromBytes(sp []byte) (p CPoint) {
 	var err error
 	p.x = new(big.Int).SetBytes(sp[1:SHORT_POINT_LENGTH])
@@ -314,13 +309,13 @@ func PointFromBytes(sp []byte) (p CPoint) {
 
 /*********************************************************************************************
  *
- * Fonctions utilitaires sur tables SQL
+ * Functions for SQL tables
  *
  *********************************************************************************************/
 
 func tableInfoFromDB(db *sql.DB, name string, comm ...byte) (ti TableInfo) {
 	ti.name = name
-	/* On obtient les dimensions de la table et les noms des colonnes */
+	/* We get the dimensions of the table and the names of the columns */
 	oneRow, err := db.Query(fmt.Sprintf("SELECT * FROM %s LIMIT 1;", name))
 	checkErr(err)
 	ti.colNames, _ = oneRow.Columns()
@@ -328,7 +323,7 @@ func tableInfoFromDB(db *sql.DB, name string, comm ...byte) (ti TableInfo) {
 	err = db.QueryRow(fmt.Sprintf("SELECT COUNT (*) FROM %s;", name)).Scan(&ti.nRows)
 	checkErr(err)
 
-	/* On obtient les types de données dans les colonnes */
+	/* We get the data types in the columns */
 	ti.colTypes = make([]string, ti.nCol)
 	rowsColTypes, err := db.Query(fmt.Sprintf("SELECT data_type FROM information_schema.columns WHERE table_name = '%s';", name))
 	checkErr(err)
@@ -340,8 +335,10 @@ func tableInfoFromDB(db *sql.DB, name string, comm ...byte) (ti TableInfo) {
 
 	if (ti.nCol > 0) && (uint(len(comm)) != ti.nCol) {
 		ti.commands = make([]byte, ti.nCol)
-		// Si pas d'instructions alors on crypte tout sans calcul possible sauf la première colonne qui
-		// est supposée être celle des clés primaires
+
+		// If no instructions then we encrypt everything without calculation except the first column which
+		// is supposed to be the primary key column
+
 		ti.commands[0] = 0
 		for j := uint(0); j < ti.nCol; j++ {
 			ti.commands[j] = 1
@@ -352,10 +349,9 @@ func tableInfoFromDB(db *sql.DB, name string, comm ...byte) (ti TableInfo) {
 	return
 }
 
-// getCols renvoie la liste des colonnes avec noms et types pour la construction de la nouvelle table
+// getCols returns the list of columns with names and types for the construction of the new table
 func getColsString(ti TableInfo) string {
-	// On utilise un buffer, qui est plus efficace pour la concaténation de chaînes de caractères
-	// que l'utilisation de l'opérateur + entre variables string
+	// We use a buffer, which is more efficient for concatenating strings than the use of the + operator between string variables
 	var buffer bytes.Buffer
 	for j := uint(0); j < ti.nCol; j++ {
 		if j > 0 {
@@ -374,11 +370,10 @@ func getColsString(ti TableInfo) string {
 
 /*********************************************************************************************
  *
- * Fonctions de conversion
+ * Conversion functions
  *
  *********************************************************************************************/
 
-// BytesFromFloat64 convertit les float64 en bytes
 func BytesFromFloat64(float float64) []byte {
 	bits := math.Float64bits(float)
 	bytes := make([]byte, 8)
@@ -386,14 +381,12 @@ func BytesFromFloat64(float float64) []byte {
 	return bytes
 }
 
-// Float64frombytes convertit les []byte en float64
 func Float64frombytes(bytes []byte) float64 {
 	bits := binary.LittleEndian.Uint64(bytes)
 	float := math.Float64frombits(bits)
 	return float
 }
 
-// BytesFromFloat32 convertit les float64 en bytes
 func BytesFromFloat32(float float32) []byte {
 	bits := math.Float32bits(float)
 	bytes := make([]byte, 4)
@@ -401,14 +394,12 @@ func BytesFromFloat32(float float32) []byte {
 	return bytes
 }
 
-// Float32frombytes convertit les []byte en float64
 func Float32frombytes(bytes []byte) float32 {
 	bits := binary.LittleEndian.Uint32(bytes)
 	float := math.Float32frombits(bits)
 	return float
 }
 
-// GetBytes permet la conversion interface{} → []byte qui est utilisée plus haut
 func GetBytes(key interface{}) []byte {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)

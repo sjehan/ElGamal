@@ -6,20 +6,20 @@ import (
 
 /******************************************************************************************************
  *
- * Fonctions fournissant les clés à partir d'un tableau de clés stocké par le key holder
+ * Functions providing the keys from a table of keys stored by the key holder
  *
  ******************************************************************************************************/
 
-// GiveKeyPoint renvoie la valeur (r_i × s_j)⋅g qui permettra au databuyer, en la combinant
-// avec la valeur donnée par un autre des key holders, de reconstituer la clé de décryption spécifique
-// à une case de la table concernée. Ceci est indépendant du fait que le cryptage ait été réalisé
-// par hachage ou sous forme de point de la courbe.
+// GiveKeyPoint returns the value (r_i × s_j)⋅g which will allow the databuyer, when combined
+// with the value given by another key holder, to reconstruct the decryption key specific
+// to a cell of the table concerned. This is independent of the fact that the encryption was done
+// by hashing or in the form of a point on the curve.
 func (keys PartTableKey) GiveKeyPoint(c coord) (pt CPoint) {
 	return baseMult(new(big.Int).Mul(keys.R[c.i], keys.PrivPart[c.j]))
 }
 
-// GiveKeyCalculation est utilisée en tant que key holder pour fournir la clé de décryptage correspondant
-// à un calcul dont les coefficients (entiers) sont donnés par coeffs.
+// GiveKeyCalculation is used by the key holder to provide the decryption key corresponding
+// to a calculation whose coefficients (integers) are given by coeffs.
 func (keys PartTableKey) GiveKeyCalculation(coeffs map[coord]*big.Int) (pt CPoint) {
 	var c, sum = new(big.Int), new(big.Int)
 	for k, v := range coeffs {

@@ -23,6 +23,9 @@ The ElGamal algorithm can be used in 2 distinct manners:
 a) The first one uses a hash function and encodes the data by an XOR operation with the hash obtained from the key. The space taken by the encrypted data is then the same as that of the original, but no operation can be performed on it that does not pass through a preliminary decoding.
 b) The second version considers the messages to be encrypted as integers, and then translates them into a point on the elliptic curve. To encrypt them, we then add another point on the curve determined by the corresponding keys. What is retained on the server is then a point on the curve in reduced format (29 bytes for the P224 curve). The encrypted messages are therefore necessarily voluminous but we can perform weighted sums of these values and decrypt only the result.
 
+This packages deals with database encryption (from source database to destination), and functions on encrypted data.
+To run the program, you need to have installed a Postgresql database.
+
 
 The source code uses the following packages:
 - big : https://godoc.org/math/big
